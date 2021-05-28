@@ -18,7 +18,8 @@
         }
     ],
     "require": {
-        "php": "^7|^8"
+        "php": "^7|^8",
+        "magento/module-login-as-customer": "^100.4"
     },
     "autoload": {
         "files": [
