@@ -2,6 +2,6 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     	xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <type name="Magento\LoginAsCustomerAssistance\Model\ResourceModel\GetLoginAsCustomerAssistanceAllowed">
-    	<plugin name="force-login-as-customer" type="Fruitcake\AlwaysLoginAsCustomer\Plugin\GetLoginAsCustomerAssistanceAllowedPlugin" sortOrder="1"/>
+    	<plugin name="force-login-as-customer" type="Fruitcake\AlwaysLoginAsCustomer\Plugin\GetLoginAsCustomerAssistanceAllowedPlugin" sortOrder="15"/>
     </type>
 </config>
