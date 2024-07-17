@@ -3,6 +3,7 @@
     <module name="Fruitcake_AlwaysLoginAsCustomer">
         <sequence>
             <module name="Magento_LoginAsCustomer"/>
+            <module name="Magento_LoginAsCustomerAdminUi"/>
         </sequence>
     </module>
 </config>
