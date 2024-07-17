@@ -4,5 +4,5 @@
         <sequence>
             <module name="Magento_LoginAsCustomer"/>
         </sequence>
-    </module
+    </module>
 </config>
