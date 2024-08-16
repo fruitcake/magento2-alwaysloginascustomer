@@ -23,6 +23,7 @@
                     <item name="sortOrder" xsi:type="number">90</item>
                     <item name="label" xsi:type="string" translate="true">Login as Customer</item>
                     <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
+                    <item name="fieldAction" xsi:type="boolean">false</item>
                 </item>
             </argument>
         </column>
