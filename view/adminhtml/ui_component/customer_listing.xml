@@ -1,7 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
-    <columns name="customer_columns">
+    <columns name="customer_columns" class="Magento\Customer\Ui\Component\Listing\Columns">
+        <settings>
+            <editorConfig>
+                <param name="enabled" xsi:type="boolean">false</param>
+            </editorConfig>
+            <childDefaults>
+                <param name="fieldAction" xsi:type="array">
+                    <item name="provider" xsi:type="string">customer_listing.customer_listing.customer_columns.actions</item>
+                    <item name="target" xsi:type="string">applyAction</item>
+                    <item name="params" xsi:type="array">
+                        <item name="0" xsi:type="string">edit</item>
+                        <item name="1" xsi:type="string">${ $.$data.rowIndex }</item>
+                    </item>
+                </param>
+            </childDefaults>
+        </settings>
         <column name="login_as_customer" class="Fruitcake\AlwaysLoginAsCustomer\Ui\Component\Listing\Column\LoginAsCustomer">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
