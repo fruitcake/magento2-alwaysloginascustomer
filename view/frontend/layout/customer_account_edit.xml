@@ -8,5 +8,13 @@
                 </action>
             </referenceBlock>
         </referenceContainer>
+        <!-- Hyvä theme compatibility -->
+        <referenceContainer name="form.additional.info">
+            <referenceBlock name="form_additional_info_customer">
+                <action method="setTemplate">
+                    <argument name="template" xsi:type="string">Fruitcake_AlwaysLoginAsCustomer::shopping-assistance.phtml</argument>
+                </action>
+            </referenceBlock>
+        </referenceContainer>
     </body>
 </page>
