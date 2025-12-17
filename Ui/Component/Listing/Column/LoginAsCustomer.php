@@ -39,6 +39,11 @@ class LoginAsCustomer extends Column
      */
     private $escaper;
 
+    /**
+     * @var UrlInterface
+     */
+    private $urlBuilder;
+
     public function __construct(
         ContextInterface $context,
         UiComponentFactory $uiComponentFactory,
@@ -46,6 +51,7 @@ class LoginAsCustomer extends Column
         \Magento\Framework\AuthorizationInterface $authorization,
         \Magento\Framework\Data\Form\FormKey $formKey,
         Escaper $escaper,
+        UrlInterface $urlBuilder,
         ?DataProvider $dataProvider = null,
         array $components = [],
         array $data = []
@@ -56,6 +62,7 @@ class LoginAsCustomer extends Column
         $this->dataProvider = $dataProvider ?? ObjectManager::getInstance()->get(DataProvider::class);
         $this->formKey = $formKey;
         $this->escaper = $escaper;
+        $this->urlBuilder = $urlBuilder;
     }
 
     /**
@@ -76,9 +83,19 @@ class LoginAsCustomer extends Column
 
         if (isset($dataSource['data']['items'])) {
             foreach ($dataSource['data']['items'] as &$item) {
-                $data = $this->dataProvider->getData($item['entity_id']);
+                $customerId = $item['entity_id'];
+                $loginUrl = $this->getLoginUrl($customerId);
+                $fetchOptionsUrl = $this->urlBuilder->getUrl('fruitcake_loginascustomer/storeoptions/fetch');
+                
+                $onclick = sprintf(
+                    'require(["Fruitcake_AlwaysLoginAsCustomer/js/grid-login-popup"], function(popup) { popup(%s, %d, %s); }); return false;',
+                    json_encode($loginUrl),
+                    $customerId,
+                    json_encode($fetchOptionsUrl)
+                );
+                
                 $item[$this->getName()] = '<input name="form_key" type="hidden" value="'.$formKey.'"/>
-                <button onclick="' .$this->escaper->escapeHtmlAttr($data['on_click']) .'">'.$this->escaper->escapeHtml(__('Login as customer')) .'</button>';
+                <button onclick="' .$this->escaper->escapeHtmlAttr($onclick) .'">'.$this->escaper->escapeHtml(__('Login as customer')) .'</button>';
             }
         }
 
