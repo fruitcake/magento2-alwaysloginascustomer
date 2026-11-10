@@ -104,6 +104,8 @@ class Fetch extends Action implements HttpGetActionInterface
 
         try {
             $customer = $this->customerRepository->getById($customerId);
+
+            return $result->setData(['options' => $this->generateStoreOptions($customer)]);
         } catch (NoSuchEntityException $e) {
             return $result->setData(['error' => (string)__('Customer with this ID no longer exists.')]);
         } catch (LocalizedException $e) {
@@ -112,8 +114,6 @@ class Fetch extends Action implements HttpGetActionInterface
             $this->logger->critical($e);
             return $result->setData(['error' => (string)__('Unable to fetch store options.')]);
         }
-
-        return $result->setData(['options' => $this->generateStoreOptions($customer)]);
     }
 
     /**

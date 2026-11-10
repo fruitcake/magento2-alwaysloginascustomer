@@ -121,6 +121,20 @@ class FetchTest extends TestCase
         $this->assertSame(['error' => 'Unable to fetch store options.'], $this->responseData);
     }
 
+    public function testExceptionWhileGeneratingOptionsIsLoggedAndNotLeaked(): void
+    {
+        $this->request->method('getParam')->willReturn('5');
+        $this->config->method('isStoreManualChoiceEnabled')->willReturn(true);
+        $this->customerRepository->method('getById')->willReturn($this->createMock(CustomerInterface::class));
+        $exception = new \RuntimeException('SQLSTATE[HY000] lazy store load failed');
+        $this->systemStore->method('getGroupCollection')->willThrowException($exception);
+        $this->logger->expects($this->once())->method('critical')->with($exception);
+
+        $this->controller->execute();
+
+        $this->assertSame(['error' => 'Unable to fetch store options.'], $this->responseData);
+    }
+
     public function testOptionsAreLimitedToCustomerWebsiteWhenAccountsArePerWebsite(): void
     {
         $this->givenCustomer('2', '3');
