@@ -17,8 +17,20 @@
         }
     ],
     "require": {
-        "php": "^7.1|^8",
-        "magento/module-login-as-customer": "^100.4"
+        "php": "^7.3 || ^8.0",
+        "magento/framework": "^103.0",
+        "magento/module-backend": "^102.0",
+        "magento/module-customer": "^103.0",
+        "magento/module-login-as-customer": "^100.4",
+        "magento/module-login-as-customer-admin-ui": "^100.4",
+        "magento/module-login-as-customer-api": "^100.4",
+        "magento/module-login-as-customer-assistance": "^100.4",
+        "magento/module-store": "^101.0",
+        "magento/module-ui": "^101.0"
+    },
+    "require-dev": {
+        "magento/magento-coding-standard": "*",
+        "phpunit/phpunit": "^9.6 || ^10.5"
     },
     "autoload": {
         "files": [
@@ -26,13 +38,34 @@
         ],
         "psr-4": {
             "Fruitcake\\AlwaysLoginAsCustomer\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Test/"
+        ]
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs": "phpcs"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "magento/composer-dependency-version-audit-plugin": true,
+            "magento/magento-composer-installer": true,
+            "laminas/laminas-dependency-plugin": true
         }
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "extra": {
         "branch-alias": {
-            "dev-main": "1.2-dev"
+            "dev-main": "1.3-dev"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://mirror.mage-os.org/"
+        }
+    ]
 }

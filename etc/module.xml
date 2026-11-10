@@ -4,6 +4,7 @@
         <sequence>
             <module name="Magento_LoginAsCustomer"/>
             <module name="Magento_LoginAsCustomerAdminUi"/>
+            <module name="Magento_LoginAsCustomerAssistance"/>
         </sequence>
     </module>
 </config>

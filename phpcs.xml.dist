@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<ruleset name="Fruitcake_AlwaysLoginAsCustomer">
+    <description>Magento 2 coding standard</description>
+    <file>.</file>
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>.idea/*</exclude-pattern>
+    <exclude-pattern>*.xml</exclude-pattern>
+    <arg name="extensions" value="php,phtml"/>
+    <arg value="sp"/>
+    <rule ref="Magento2"/>
+</ruleset>
