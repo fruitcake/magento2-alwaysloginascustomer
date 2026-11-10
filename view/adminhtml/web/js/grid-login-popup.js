@@ -5,10 +5,9 @@ define([
     'jquery',
     'Magento_Ui/js/modal/confirm',
     'mage/translate',
-    'mage/template',
     'underscore',
     'Magento_Ui/js/modal/alert'
-], function ($, confirm, $t, template, _, alert) {
+], function ($, confirm, $t, _, alert) {
     'use strict';
 
     /**
@@ -27,12 +26,20 @@ define([
             dataType: 'json',
             showLoader: true,
             success: function (response) {
-                var content = '<div class="message message-warning">' + 
-                    $t('Actions taken while in "Login as Customer" will affect actual customer data.') + 
+                if (response.error) {
+                    alert({
+                        content: _.escape(response.error)
+                    });
+
+                    return;
+                }
+
+                var content = '<div class="message message-warning">' +
+                    $t('Actions taken while in "Login as Customer" will affect actual customer data.') +
                     '</div>';
                 var title = $t('You are about to Login as Customer');
                 var storeOptions = response.options || [];
-                
+
                 // If there are multiple store options, show the select dropdown
                 if (storeOptions.length > 0) {
                     title = $t('Login as Customer: Select Store');
@@ -42,18 +49,18 @@ define([
                         '</label>' +
                         '<div class="admin__field-control">' +
                         '<select id="lac-confirmation-popup-store-id" class="admin__control-select">';
-                    
+
                     _.each(storeOptions, function(option) {
                         var disabled = option.disabled ? ' disabled="disabled"' : '';
                         var selected = option.selected ? ' selected="selected"' : '';
-                        selectHtml += '<option value="' + option.value + '"' + disabled + selected + '>' + 
+                        selectHtml += '<option value="' + _.escape(option.value) + '"' + disabled + selected + '>' +
                             _.escape(option.label) + '</option>';
                     });
-                    
+
                     selectHtml += '</select></div></div>';
                     content = selectHtml + content;
                 }
-                
+
                 // Show confirmation popup
                 confirm({
                     title: title,
@@ -62,17 +69,17 @@ define([
                     actions: {
                         confirm: function () {
                             var storeId = $('#lac-confirmation-popup-store-id').val();
-                            var formKey = $('input[name="form_key"]').val();
+                            var formKey = window.FORM_KEY || $('input[name="form_key"]').val();
                             var params = {};
-                            
+
                             if (storeId) {
                                 params.store_id = storeId;
                             }
-                            
+
                             if (formKey) {
                                 params.form_key = formKey;
                             }
-                            
+
                             $.ajax({
                                 url: url,
                                 type: 'POST',
@@ -81,18 +88,18 @@ define([
                                 showLoader: true,
                                 success: function (data) {
                                     var messages = data.messages || [];
-                                    
+
                                     if (data.message) {
                                         messages.push(data.message);
                                     }
-                                    
+
                                     if (data.redirectUrl) {
                                         window.open(data.redirectUrl);
                                     } else if (messages.length) {
                                         messages = messages.map(function (message) {
                                             return _.escape(message);
                                         });
-                                        
+
                                         alert({
                                             content: messages.join('<br>')
                                         });
@@ -127,7 +134,7 @@ define([
                 });
             }
         });
-        
+
         return false;
     };
 });

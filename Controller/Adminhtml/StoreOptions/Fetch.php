@@ -4,21 +4,28 @@ namespace Fruitcake\AlwaysLoginAsCustomer\Controller\Adminhtml\StoreOptions;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Customer\Api\Data\CustomerInterface;
 use Magento\Customer\Model\Config\Share;
 use Magento\Framework\App\Action\HttpGetActionInterface;
+use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\Escaper;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\LoginAsCustomerApi\Api\ConfigInterface;
 use Magento\Store\Model\Group;
 use Magento\Store\Model\System\Store as SystemStore;
 use Magento\Store\Model\Website;
+use Psr\Log\LoggerInterface;
 
+/**
+ * Returns the store options shown in the "Login as Customer" popup on the customer grid.
+ */
 class Fetch extends Action implements HttpGetActionInterface
 {
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'Magento_LoginAsCustomer::login';
+    public const ADMIN_RESOURCE = 'Magento_LoginAsCustomer::login';
 
     /**
      * @var JsonFactory
@@ -41,14 +48,14 @@ class Fetch extends Action implements HttpGetActionInterface
     private $share;
 
     /**
-     * @var Escaper
-     */
-    private $escaper;
-
-    /**
      * @var ConfigInterface
      */
     private $config;
+
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
     /**
      * @param Context $context
@@ -56,8 +63,8 @@ class Fetch extends Action implements HttpGetActionInterface
      * @param CustomerRepositoryInterface $customerRepository
      * @param SystemStore $systemStore
      * @param Share $share
-     * @param Escaper $escaper
      * @param ConfigInterface $config
+     * @param LoggerInterface $logger
      */
     public function __construct(
         Context $context,
@@ -65,108 +72,90 @@ class Fetch extends Action implements HttpGetActionInterface
         CustomerRepositoryInterface $customerRepository,
         SystemStore $systemStore,
         Share $share,
-        Escaper $escaper,
-        ConfigInterface $config
+        ConfigInterface $config,
+        LoggerInterface $logger
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
         $this->customerRepository = $customerRepository;
         $this->systemStore = $systemStore;
         $this->share = $share;
-        $this->escaper = $escaper;
         $this->config = $config;
+        $this->logger = $logger;
     }
 
     /**
      * Fetch store options for a customer
      *
-     * @return \Magento\Framework\Controller\Result\Json
+     * @return Json
      */
     public function execute()
     {
         $result = $this->resultJsonFactory->create();
-        
+        $customerId = (int)$this->getRequest()->getParam('customer_id');
+
+        if ($customerId <= 0) {
+            return $result->setData(['error' => (string)__('Customer ID is required.')]);
+        }
+
+        if (!$this->config->isStoreManualChoiceEnabled()) {
+            return $result->setData(['options' => []]);
+        }
+
         try {
-            $customerId = (int)$this->getRequest()->getParam('customer_id');
-            
-            if (!$customerId) {
-                return $result->setData(['error' => __('Customer ID is required.')]);
-            }
-
-            // Check if store manual choice is enabled
-            if (!$this->config->isStoreManualChoiceEnabled()) {
-                return $result->setData(['options' => []]);
-            }
-
             $customer = $this->customerRepository->getById($customerId);
-            $options = $this->generateStoreOptions($customer);
-            
-            return $result->setData(['options' => $options]);
-            
-        } catch (\Exception $e) {
+
+            return $result->setData(['options' => $this->generateStoreOptions($customer)]);
+        } catch (NoSuchEntityException $e) {
+            return $result->setData(['error' => (string)__('Customer with this ID no longer exists.')]);
+        } catch (LocalizedException $e) {
             return $result->setData(['error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            $this->logger->critical($e);
+            return $result->setData(['error' => (string)__('Unable to fetch store options.')]);
         }
     }
 
     /**
-     * Generate store options for customer
+     * Generate store options for customer.
      *
-     * @param \Magento\Customer\Api\Data\CustomerInterface $customer
+     * Labels are returned as plain text; escaping is done by the client when rendering.
+     *
+     * @param CustomerInterface $customer
      * @return array
      */
-    private function generateStoreOptions($customer)
+    private function generateStoreOptions(CustomerInterface $customer): array
     {
         $options = [];
-        $websiteCollection = $this->systemStore->getWebsiteCollection();
         $isGlobalScope = $this->share->isGlobalScope();
-        $customerWebsiteId = $customer->getWebsiteId();
-        $customerStoreId = $customer->getStoreId();
+        $customerWebsiteId = (int)$customer->getWebsiteId();
+        $customerStoreId = (int)$customer->getStoreId();
+        $groupCollection = $this->systemStore->getGroupCollection();
 
         /** @var Website $website */
-        foreach ($websiteCollection as $website) {
-            $websiteId = $website->getId();
-            $websiteName = $this->sanitizeName($website->getName());
-            
-            $groupCollection = $this->systemStore->getGroupCollection();
-            
+        foreach ($this->systemStore->getWebsiteCollection() as $website) {
+            $websiteId = (int)$website->getId();
+
             /** @var Group $group */
             foreach ($groupCollection as $group) {
-                if ($group->getWebsiteId() == $websiteId) {
-                    $storeViewIds = $group->getStoreIds();
-                    if (!empty($storeViewIds)) {
-                        $groupName = $this->sanitizeName($group->getName());
-                        $label = $websiteName . ' / ' . $groupName;
-                        
-                        $options[] = [
-                            'value' => array_values($storeViewIds)[0],
-                            'label' => $label,
-                            'disabled' => !$isGlobalScope && $customerWebsiteId !== $websiteId,
-                            'selected' => in_array($customerStoreId, $storeViewIds)
-                        ];
-                    }
+                if ((int)$group->getWebsiteId() !== $websiteId) {
+                    continue;
                 }
+
+                $storeViewIds = array_map('intval', array_values($group->getStoreIds()));
+                if (empty($storeViewIds)) {
+                    continue;
+                }
+
+                $options[] = [
+                    'value' => $storeViewIds[0],
+                    'label' => $website->getName() . ' / ' . $group->getName(),
+                    'disabled' => !$isGlobalScope && $customerWebsiteId !== $websiteId,
+                    'selected' => in_array($customerStoreId, $storeViewIds, true),
+                ];
             }
         }
 
         return $options;
-    }
-
-    /**
-     * Sanitize name
-     *
-     * @param string $name
-     * @return string
-     */
-    private function sanitizeName(string $name): string
-    {
-        $matches = [];
-        preg_match('/\$[:]*{(.)*}/', $name, $matches);
-        if (count($matches) > 0) {
-            $name = $this->escaper->escapeHtml($this->escaper->escapeJs($name));
-        } else {
-            $name = $this->escaper->escapeHtml($name);
-        }
-
-        return $name;
     }
 }

@@ -1,1 +1,8 @@
-<input type="hidden" name="assistance_allowed" value="1"/>
+<?php
+/**
+ * Replaces the "Allow remote shopping assistance" checkbox with nothing.
+ *
+ * Login as Customer is always allowed by this module, so the opt-in is hidden. No `assistance_allowed`
+ * value is submitted, which leaves the customer's stored preference untouched.
+ * (Core interprets 1 as DENIED and 2 as ALLOWED, see IsAssistanceEnabledInterface.)
+ */

@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Composer resolves the newest Magento 2.4.x release supporting each PHP version
+        # (via the Mage-OS mirror configured in composer.json, no repo.magento.com keys needed).
+        php: ['8.1', '8.2', '8.3', '8.4']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, gd, intl, soap, sodium, xsl, zip
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ matrix.php }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-
+
+      - name: Install dependencies
+        run: composer update --no-interaction --no-progress --prefer-dist
+
+      - name: Lint PHP files
+        run: find . -path ./vendor -prune -o \( -name '*.php' -o -name '*.phtml' \) -print0 | xargs -0 -n1 php -l > /dev/null
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit
+
+  coding-standard:
+    name: Coding standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, gd, intl, soap, sodium, xsl, zip
+          coverage: none
+          tools: cs2pr
+
+      - name: Install dependencies
+        run: composer update --no-interaction --no-progress --prefer-dist
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+      - name: Validate XML
+        run: |
+          php -r '
+            $failed = false;
+            foreach (["etc", "view"] as $dir) {
+                foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $file) {
+                    if (substr($file, -4) !== ".xml") { continue; }
+                    libxml_use_internal_errors(true);
+                    if (!(new DOMDocument())->load((string)$file)) {
+                        $failed = true;
+                        foreach (libxml_get_errors() as $error) {
+                            printf("::error file=%s,line=%d::%s\n", $file, $error->line, trim($error->message));
+                        }
+                        libxml_clear_errors();
+                    }
+                }
+            }
+            exit($failed ? 1 : 0);
+          '
+
+      - name: Run PHP_CodeSniffer (Magento2 standard)
+        run: vendor/bin/phpcs -q --report=checkstyle | cs2pr
