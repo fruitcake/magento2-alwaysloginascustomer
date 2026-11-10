@@ -72,7 +72,24 @@ jobs:
         run: composer validate --no-check-publish
 
       - name: Validate XML
-        run: find etc view -name '*.xml' -print0 | xargs -0 -n1 xmllint --noout
+        run: |
+          php -r '
+            $failed = false;
+            foreach (["etc", "view"] as $dir) {
+                foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $file) {
+                    if (substr($file, -4) !== ".xml") { continue; }
+                    libxml_use_internal_errors(true);
+                    if (!(new DOMDocument())->load((string)$file)) {
+                        $failed = true;
+                        foreach (libxml_get_errors() as $error) {
+                            printf("::error file=%s,line=%d::%s\n", $file, $error->line, trim($error->message));
+                        }
+                        libxml_clear_errors();
+                    }
+                }
+            }
+            exit($failed ? 1 : 0);
+          '
 
       - name: Run PHP_CodeSniffer (Magento2 standard)
         run: vendor/bin/phpcs -q --report=checkstyle | cs2pr
